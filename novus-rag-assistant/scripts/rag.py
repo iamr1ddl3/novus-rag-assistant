@@ -70,7 +70,8 @@ client = OpenAI(api_key=os.getenv("OPENAI_API_KEY"))
 try:
     from langfuse.decorators import observe, langfuse_context
     LANGFUSE_ENABLED = True
-except ImportError:
+except Exception:
+    # ImportError OR pydantic/SDK incompat (e.g. Python 3.14 + langfuse pydantic v1) — degrade to no-op
     LANGFUSE_ENABLED = False
     def observe(func=None, **kwargs):
         if func is not None:
