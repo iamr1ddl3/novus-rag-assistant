@@ -234,7 +234,8 @@ def ask_remote(query: str, api_url: str, mode: str = "dense") -> dict:
 # ---------------------------------------------------------------------------
 
 def run_eval(dataset: list[dict], verbose: bool = True, use_hybrid: bool = False,
-             remote: bool = False, api_url: str | None = None) -> list[dict]:
+             remote: bool = False, api_url: str | None = None,
+             use_reranker: bool = False) -> list[dict]:
     """Run the full eval pipeline over all dataset entries.
 
     Args:
@@ -271,7 +272,7 @@ def run_eval(dataset: list[dict], verbose: bool = True, use_hybrid: bool = False
                 })
                 continue
         else:
-            rag_result = ask(entry["query"], use_hybrid=use_hybrid)
+            rag_result = ask(entry["query"], use_hybrid=use_hybrid, use_reranker=use_reranker)
 
         hit = check_retrieval_hit(rag_result["retrieved_chunks"], entry["expected_source"])
         mrr = calculate_mrr(rag_result["retrieved_chunks"], entry["expected_source"])
@@ -373,6 +374,7 @@ def main():
     parser.add_argument("--limit", type=int, default=None, help="Evaluate only first N entries")
     parser.add_argument("--quiet", action="store_true", help="Suppress per-entry progress")
     parser.add_argument("--use-hybrid", action="store_true", help="Use hybrid BM25+dense+RRF retrieval (A2.3)")
+    parser.add_argument("--use-reranker", action="store_true", help="Apply Cohere rerank-english-v3.0 after retrieval")
     parser.add_argument("--remote", action="store_true", help="Call deployed API instead of local import (D4.1)")
     parser.add_argument("--api-url", type=str, default=None, help="Base URL of deployed API, e.g. https://<alb-dns>")
     args = parser.parse_args()
@@ -383,8 +385,12 @@ def main():
 
     if args.remote:
         mode_label = f"REMOTE ({args.api_url})"
+    elif args.use_hybrid and args.use_reranker:
+        mode_label = "HYBRID + RERANKER (BM25+dense+RRF, Cohere rerank)"
     elif args.use_hybrid:
         mode_label = "HYBRID (BM25+dense+RRF)"
+    elif args.use_reranker:
+        mode_label = "DENSE + RERANKER (pgvector + Cohere rerank)"
     else:
         mode_label = "DENSE (pgvector only)"
 
@@ -396,6 +402,7 @@ def main():
         use_hybrid=args.use_hybrid,
         remote=args.remote,
         api_url=args.api_url,
+        use_reranker=args.use_reranker,
     )
     elapsed = round(time.time() - t0, 1)
 
