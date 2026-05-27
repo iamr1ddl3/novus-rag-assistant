@@ -5,9 +5,9 @@ services:
     image: pgvector/pgvector:pg16
     container_name: project-a-pgvector
     environment:
-      POSTGRES_USER: workshop
-      POSTGRES_PASSWORD: workshop123
-      POSTGRES_DB: acmera_kb
+      POSTGRES_USER: novus
+      POSTGRES_PASSWORD: novus123
+      POSTGRES_DB: novus_kb
     ports:
       - "5433:5432"
     volumes:
