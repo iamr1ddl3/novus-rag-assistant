@@ -33,3 +33,12 @@ raw/
 # Temp / test files
 novus-rag-assistant/query.json
 *.docx
+
+# uvicorn / nohup runtime artefacts
+api_*.log
+api_pid*.txt
+api_server.log
+api_server_err.log
+
+# playwright MCP cache
+.playwright-mcp/
