@@ -1,44 +1,57 @@
 {
   "scorecard": {
-    "n": 57,
+    "n": 72,
+    "n_answerable": 57,
+    "n_refusal": 15,
     "hit_rate": 0.9825,
     "mrr": 0.9357,
-    "faithfulness": 0.9825,
-    "correctness": 0.7825,
-    "faithfulness_raw": 4.91,
-    "correctness_raw": 3.91
+    "faithfulness": 0.9684,
+    "correctness": 0.786,
+    "faithfulness_raw": 4.84,
+    "correctness_raw": 3.93,
+    "refusal_score": 0.9067,
+    "refusal_score_raw": 4.53,
+    "refusal_pass_rate": 0.8667
   },
   "stratified": {
     "by_category": {
       "account": {
         "n": 13,
+        "n_answerable": 13,
+        "n_refusal": 0,
         "hit_rate": 1.0,
         "mrr": 0.9103,
         "faithfulness": 1.0,
-        "correctness": 0.7846,
+        "correctness": 0.8,
         "faithfulness_raw": 5.0,
-        "correctness_raw": 3.92
+        "correctness_raw": 4.0
       },
       "membership": {
         "n": 4,
+        "n_answerable": 4,
+        "n_refusal": 0,
         "hit_rate": 1.0,
         "mrr": 1.0,
         "faithfulness": 1.0,
-        "correctness": 0.85,
+        "correctness": 0.8,
         "faithfulness_raw": 5.0,
-        "correctness_raw": 4.25
+        "correctness_raw": 4.0
       },
       "payments": {
         "n": 18,
+        "n_answerable": 18,
+        "n_refusal": 0,
         "hit_rate": 1.0,
         "mrr": 0.9722,
         "faithfulness": 1.0,
-        "correctness": 0.8111,
+        "correctness": 0.8,
         "faithfulness_raw": 5.0,
-        "correctness_raw": 4.06
+        "correctness_raw": 4.0
       },
       "loans": {
         "n": 5,
+        "n_answerable": 5,
+        "n_refusal": 0,
         "hit_rate": 1.0,
         "mrr": 0.9,
         "faithfulness": 0.84,
@@ -48,59 +61,154 @@
       },
       "products": {
         "n": 9,
+        "n_answerable": 9,
+        "n_refusal": 0,
         "hit_rate": 0.8889,
         "mrr": 0.8889,
-        "faithfulness": 1.0,
-        "correctness": 0.7556,
-        "faithfulness_raw": 5.0,
-        "correctness_raw": 3.78
+        "faithfulness": 0.9111,
+        "correctness": 0.7778,
+        "faithfulness_raw": 4.56,
+        "correctness_raw": 3.89
       },
       "fraud": {
         "n": 5,
+        "n_answerable": 5,
+        "n_refusal": 0,
         "hit_rate": 1.0,
         "mrr": 0.9,
         "faithfulness": 0.96,
-        "correctness": 0.84,
+        "correctness": 0.88,
         "faithfulness_raw": 4.8,
-        "correctness_raw": 4.2
+        "correctness_raw": 4.4
       },
       "grievance": {
         "n": 3,
+        "n_answerable": 3,
+        "n_refusal": 0,
         "hit_rate": 1.0,
         "mrr": 1.0,
         "faithfulness": 1.0,
         "correctness": 0.8667,
         "faithfulness_raw": 5.0,
         "correctness_raw": 4.33
+      },
+      "out_of_scope": {
+        "n": 5,
+        "n_answerable": 0,
+        "n_refusal": 5,
+        "refusal_score": 1.0,
+        "refusal_score_raw": 5.0,
+        "refusal_pass_rate": 1.0
+      },
+      "no_answer": {
+        "n": 4,
+        "n_answerable": 0,
+        "n_refusal": 4,
+        "refusal_score": 0.65,
+        "refusal_score_raw": 3.25,
+        "refusal_pass_rate": 0.5
+      },
+      "injection": {
+        "n": 3,
+        "n_answerable": 0,
+        "n_refusal": 3,
+        "refusal_score": 1.0,
+        "refusal_score_raw": 5.0,
+        "refusal_pass_rate": 1.0
+      },
+      "adversarial": {
+        "n": 3,
+        "n_answerable": 0,
+        "n_refusal": 3,
+        "refusal_score": 1.0,
+        "refusal_score_raw": 5.0,
+        "refusal_pass_rate": 1.0
       }
     },
     "by_difficulty": {
       "easy": {
         "n": 34,
+        "n_answerable": 34,
+        "n_refusal": 0,
         "hit_rate": 0.9706,
         "mrr": 0.9069,
         "faithfulness": 0.9765,
-        "correctness": 0.8059,
+        "correctness": 0.7941,
         "faithfulness_raw": 4.88,
-        "correctness_raw": 4.03
+        "correctness_raw": 3.97
       },
       "medium": {
-        "n": 15,
+        "n": 19,
+        "n_answerable": 15,
+        "n_refusal": 4,
         "hit_rate": 1.0,
         "mrr": 0.9667,
-        "faithfulness": 0.9867,
-        "correctness": 0.6667,
-        "faithfulness_raw": 4.93,
-        "correctness_raw": 3.33
+        "faithfulness": 0.9333,
+        "correctness": 0.7067,
+        "faithfulness_raw": 4.67,
+        "correctness_raw": 3.53,
+        "refusal_score": 0.65,
+        "refusal_score_raw": 3.25,
+        "refusal_pass_rate": 0.5
       },
       "hard": {
-        "n": 8,
+        "n": 19,
+        "n_answerable": 8,
+        "n_refusal": 11,
         "hit_rate": 1.0,
         "mrr": 1.0,
         "faithfulness": 1.0,
         "correctness": 0.9,
         "faithfulness_raw": 5.0,
-        "correctness_raw": 4.5
+        "correctness_raw": 4.5,
+        "refusal_score": 1.0,
+        "refusal_score_raw": 5.0,
+        "refusal_pass_rate": 1.0
+      }
+    },
+    "by_failure_class": {
+      "answerable": {
+        "n": 57,
+        "n_answerable": 57,
+        "n_refusal": 0,
+        "hit_rate": 0.9825,
+        "mrr": 0.9357,
+        "faithfulness": 0.9684,
+        "correctness": 0.786,
+        "faithfulness_raw": 4.84,
+        "correctness_raw": 3.93
+      },
+      "out_of_scope": {
+        "n": 5,
+        "n_answerable": 0,
+        "n_refusal": 5,
+        "refusal_score": 1.0,
+        "refusal_score_raw": 5.0,
+        "refusal_pass_rate": 1.0
+      },
+      "no_answer": {
+        "n": 4,
+        "n_answerable": 0,
+        "n_refusal": 4,
+        "refusal_score": 0.65,
+        "refusal_score_raw": 3.25,
+        "refusal_pass_rate": 0.5
+      },
+      "injection": {
+        "n": 3,
+        "n_answerable": 0,
+        "n_refusal": 3,
+        "refusal_score": 1.0,
+        "refusal_score_raw": 5.0,
+        "refusal_pass_rate": 1.0
+      },
+      "adversarial": {
+        "n": 3,
+        "n_answerable": 0,
+        "n_refusal": 3,
+        "refusal_score": 1.0,
+        "refusal_score_raw": 5.0,
+        "refusal_pass_rate": 1.0
       }
     }
   }
