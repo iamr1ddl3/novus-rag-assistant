@@ -45,7 +45,7 @@ class QueryRequest(BaseModel):
     use_output_guardrail: bool = False     # O2.1: hallucination check post-generation
     guardrail_sample_rate: float = Field(default=1.0, ge=0.0, le=1.0)  # output guardrail sampling fraction
     use_anonymizer: bool = True            # Gap 5: PII redaction opt-OUT (privacy by default) for banking
-    use_confidence: bool = False           # O2.2: confidence-gated answers
+    use_confidence: bool = True            # O2.2 + fix(no-answer-overanswers): LOW confidence → HANDOFF, abstains on out-of-corpus questions
     use_reranker: bool = False              # Cohere cross-encoder reranker (opt-in)
     include_restricted: bool = False       # WARNING: no auth gate — see debt/api-ingest-unauthenticated
 
