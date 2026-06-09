@@ -15,6 +15,8 @@ import os
 from openai import OpenAI
 from dotenv import load_dotenv
 
+from scripts.llm_fallback import llm_complete  # Gap 2: fallback-aware model calls
+
 load_dotenv()
 _client = OpenAI(api_key=os.getenv("OPENAI_API_KEY"))
 
@@ -32,16 +34,14 @@ Reply with ONLY the single word YES or NO."""
 
 def is_on_topic(query: str) -> tuple[bool, str]:
     """Return (on_topic, reason). Cheap pre-filter before the safety check."""
-    resp = _client.chat.completions.create(
-        model="gpt-4o-mini",
-        temperature=0,
-        max_tokens=5,
-        messages=[
+    verdict = llm_complete(
+        [
             {"role": "system", "content": _ON_TOPIC_SYSTEM},
             {"role": "user",   "content": query},
         ],
-    )
-    verdict = resp.choices[0].message.content.strip().upper()
+        temperature=0,
+        max_tokens=5,
+    ).upper()
     if verdict.startswith("YES"):
         return True, "on-topic"
     return False, "off-topic: query is not related to banking or financial services"
@@ -71,16 +71,14 @@ Examples:
 
 def is_safe_input(query: str) -> tuple[bool, str]:
     """Return (is_safe, reason)."""
-    resp = _client.chat.completions.create(
-        model="gpt-4o-mini",
-        temperature=0,
-        max_tokens=30,
-        messages=[
+    verdict = llm_complete(
+        [
             {"role": "system", "content": _SAFETY_SYSTEM},
             {"role": "user",   "content": query},
         ],
+        temperature=0,
+        max_tokens=30,
     )
-    verdict = resp.choices[0].message.content.strip()
     if verdict.upper().startswith("SAFE"):
         return True, "safe"
     reason = verdict[len("BLOCKED"):].lstrip(":").strip() if "BLOCKED" in verdict.upper() else verdict

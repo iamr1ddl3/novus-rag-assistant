@@ -24,9 +24,12 @@ BASELINE_PATH = Path(__file__).parent / "baseline_scores.json"
 
 THRESHOLD = 0.05   # 5 percentage points — a meaningful signal, not noise
 
-METRICS = ["hit_rate", "mrr", "faithfulness", "correctness"]
+METRICS = ["hit_rate", "mrr", "faithfulness", "correctness", "refusal_pass_rate"]
 # Faithfulness and correctness are stored normalized (0-1) in the scorecard.
 # hit_rate and mrr are already 0-1.
+# refusal_pass_rate (Gap 3) is the fraction of should-not-answer queries the
+# system correctly refused — also 0-1. Skipped automatically if a baseline
+# predates the failure-class dataset (missing-metric guard in check()).
 
 
 def load_scorecard(path: Path) -> dict:

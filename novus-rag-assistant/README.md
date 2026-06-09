@@ -29,7 +29,7 @@ novus-rag-assistant/
 │   ├── ingest.py                    # Chunk + embed + store all 19 docs
 │   ├── rag.py                       # Core RAG pipeline (embed → retrieve → generate)
 │   ├── demo.py                      # Rich CLI for interactive Q&A
-│   ├── golden_dataset.json          # 55 hand-written evaluation queries
+│   ├── golden_dataset.json          # 72 evaluation queries (57 answerable + 15 should-not-answer)
 │   ├── eval_harness.py              # 4-metric eval: hit rate, MRR, faithfulness, correctness
 │   ├── synthetic_generator.py       # Generate synthetic Q&A pairs (3 personas + critique)
 │   ├── check_regression.py          # CI-style regression checker (5pp threshold)
@@ -94,15 +94,20 @@ Expected output:
 ==================================================
   Novus Bank RAG — Overall Scorecard
 ==================================================
-  Queries evaluated : 55
-  Hit Rate          : ~82%
-  MRR               : ~0.72
-  Faithfulness      : ~3.8/5.0  (~76%)
-  Correctness       : ~3.5/5.0  (~70%)
+  Queries evaluated : 72  (answerable=57, refusal=15)
+  Hit Rate          : 98.2%
+  MRR               : 0.9357
+  Faithfulness      : 4.84/5.0  (96.8%)
+  Correctness       : 3.93/5.0  (78.6%)
+  Refusal (should-not-answer): 4.53/5.0  (pass≥4: 86.7%)
 ==================================================
 ```
 
-*(Actual numbers will vary by model version and embedding space. These are representative Week 1 baseline figures.)*
+*Measured on the full 72-query golden set: **57 answerable** (60/26/14 easy/medium/hard across 7 categories) + **15 should-not-answer** cases (out_of_scope, no_answer, injection, adversarial). Answerable metrics are LLM-judge scores (GPT-4o-mini @ temp 0); refusal cases are scored by a separate refusal judge with the input guardrail enabled. Stratified breakdown — including the by-failure-class axis — is printed by `eval_harness.py` and saved to `baseline_scores.json`.*
+
+*Known weakness surfaced by the failure-class cases: `no_answer` refusal pass-rate is only **50%** — the system still over-answers banking questions absent from the corpus instead of declining. injection / adversarial / out_of_scope all pass 100%. Tracked for follow-up.*
+
+*(Actual numbers vary by model version and embedding space; these are the current re-baselined figures, not the original clean-set numbers.)*
 
 ---
 
@@ -133,7 +138,7 @@ Every function is decorated with `@observe` from LangFuse, giving you a full spa
 
 ## The Golden Dataset
 
-`scripts/golden_dataset.json` contains **55 hand-written queries** covering all 12 policy categories:
+`scripts/golden_dataset.json` contains **72 queries**: **57 hand-written answerable queries** covering all 12 policy categories, plus **15 should-not-answer cases** (out_of_scope / no_answer / injection / adversarial) used to measure refusal behaviour:
 
 | Category | Count | Sample Query |
 |----------|-------|-------------|
@@ -146,7 +151,7 @@ Every function is decorated with `@observe` from LangFuse, giving you a full spa
 | grievance | 3 | "When can I go to the RBI Ombudsman?" |
 | ... | ... | ... |
 
-Difficulty distribution: ~60% easy, ~25% medium, ~15% hard. Hard queries require reasoning across multiple conditions (tier + seniority + tenure) or cover edge cases with non-obvious liability rules.
+Difficulty distribution (answerable subset, n=57): ~60% easy, ~26% medium, ~14% hard. Hard queries require reasoning across multiple conditions (tier + seniority + tenure) or cover edge cases with non-obvious liability rules. The 15 should-not-answer cases are all classified hard/medium and exercise refusal rather than retrieval.
 
 ---
 

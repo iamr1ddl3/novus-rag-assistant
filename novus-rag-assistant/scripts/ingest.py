@@ -29,6 +29,11 @@ CHUNK_SIZE = 500   # characters per chunk
 BATCH_SIZE = 20    # embeddings per API call
 CORPUS_DIR = Path(__file__).parent.parent / "corpus"
 
+# Gap 4 — embedding version pinning. Single source of truth for the embedding
+# model, stamped into every chunk row so a query-time vs index-time mismatch is
+# detectable (see rag.assert_embedding_model_match). Must match rag.EMBED_MODEL.
+EMBED_MODEL = "text-embedding-3-small"
+
 # Corpus access control: documents that must never be served to external customers.
 # Chunks from these docs are stored with restricted=TRUE and filtered at retrieval time.
 RESTRICTED_DOCS = {"19_internal_agent_guidelines"}
@@ -60,7 +65,7 @@ def iter_documents(corpus_dir: Path) -> Iterator[tuple[str, str]]:
 def embed_batch(texts: list[str]) -> list[list[float]]:
     """Embed a batch of texts. Returns list of 1536-dim float vectors."""
     response = client.embeddings.create(
-        model="text-embedding-3-small",
+        model=EMBED_MODEL,
         input=texts,
     )
     return [item.embedding for item in response.data]
@@ -88,9 +93,9 @@ def insert_chunks(cur, doc_id: str, chunks: list[str], embeddings: list[list[flo
     restricted = doc_id in RESTRICTED_DOCS
     for idx, (text, vec) in enumerate(zip(chunks, embeddings)):
         cur.execute(
-            "INSERT INTO chunks (doc_id, chunk_index, content, embedding, restricted) "
-            "VALUES (%s, %s, %s, %s, %s)",
-            (doc_id, idx, text, vec, restricted),
+            "INSERT INTO chunks (doc_id, chunk_index, content, embedding, restricted, embedding_model) "
+            "VALUES (%s, %s, %s, %s, %s, %s)",
+            (doc_id, idx, text, vec, restricted, EMBED_MODEL),
         )
 
 
