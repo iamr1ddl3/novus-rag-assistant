@@ -488,7 +488,7 @@ def ask(
     use_hybrid: bool = False,
     use_cache: bool = False,
     use_router: bool = False,
-    use_confidence: bool = False,
+    use_confidence: bool = True,   # fixes debt/no-answer-overanswers: LLM-judged confidence; LOW → HANDOFF (cosine-similarity floor proven unusable — no_answer queries score HIGHER than in-corpus ones on this corpus)
     use_anonymizer: bool = True,   # Gap 5: PII redaction is opt-OUT (privacy by default) for a banking system
     use_reranker: bool = False,
     use_guardrail: bool = False,

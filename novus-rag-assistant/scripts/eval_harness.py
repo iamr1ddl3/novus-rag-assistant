@@ -339,16 +339,20 @@ def run_eval(dataset: list[dict], verbose: bool = True, use_hybrid: bool = False
             # anonymization is OFF here (use_anonymizer defaults True for the
             # public API — Gap 5 — but the golden set has no PII and turning it
             # on would only add noise + cost to the baseline).
+            # Failure-class entries run with guardrail + confidence ON (that is how
+            # the system refuses out-of-corpus / should-not-answer queries —
+            # fix(no-answer-overanswers)). Answerable entries keep guardrail +
+            # confidence OFF so the retrieval/answer baseline stays comparable.
             failure_class = entry.get("failure_class")
             if failure_class:
                 rag_result = ask(
                     entry["query"], use_hybrid=use_hybrid, use_reranker=use_reranker,
-                    use_guardrail=True, use_anonymizer=False,
+                    use_guardrail=True, use_anonymizer=False, use_confidence=True,
                 )
             else:
                 rag_result = ask(
                     entry["query"], use_hybrid=use_hybrid, use_reranker=use_reranker,
-                    use_anonymizer=False,
+                    use_anonymizer=False, use_confidence=False,
                 )
 
         failure_class = entry.get("failure_class")
