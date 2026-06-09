@@ -335,14 +335,21 @@ def run_eval(dataset: list[dict], verbose: bool = True, use_hybrid: bool = False
             # since refusing injection/adversarial/off-topic queries is the guardrail's
             # job. Normal entries keep the prior behaviour (guardrail off) so the
             # baseline retrieval/answer metrics are unchanged.
+            # Eval measures retrieval/answer quality on golden text, so PII
+            # anonymization is OFF here (use_anonymizer defaults True for the
+            # public API — Gap 5 — but the golden set has no PII and turning it
+            # on would only add noise + cost to the baseline).
             failure_class = entry.get("failure_class")
             if failure_class:
                 rag_result = ask(
                     entry["query"], use_hybrid=use_hybrid, use_reranker=use_reranker,
-                    use_guardrail=True,
+                    use_guardrail=True, use_anonymizer=False,
                 )
             else:
-                rag_result = ask(entry["query"], use_hybrid=use_hybrid, use_reranker=use_reranker)
+                rag_result = ask(
+                    entry["query"], use_hybrid=use_hybrid, use_reranker=use_reranker,
+                    use_anonymizer=False,
+                )
 
         failure_class = entry.get("failure_class")
         hit = check_retrieval_hit(rag_result["retrieved_chunks"], entry["expected_source"])

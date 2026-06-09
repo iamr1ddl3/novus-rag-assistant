@@ -489,7 +489,7 @@ def ask(
     use_cache: bool = False,
     use_router: bool = False,
     use_confidence: bool = False,
-    use_anonymizer: bool = False,
+    use_anonymizer: bool = True,   # Gap 5: PII redaction is opt-OUT (privacy by default) for a banking system
     use_reranker: bool = False,
     use_guardrail: bool = False,
     use_output_guardrail: bool = False,
@@ -600,8 +600,11 @@ def ask(
     assert_embedding_model_match()
 
     # --- Retrieval (respects corpus access control) ---
+    # Gap 5: BM25 keyword path must match the anonymized text, not raw PII. The
+    # dense path already uses query_vec (embedded from clean_query); pass
+    # clean_query so hybrid_retrieve's BM25 side sees placeholders too.
     if use_hybrid:
-        chunks = hybrid_retrieve(query, query_vec, top_k=top_k, include_restricted=include_restricted)
+        chunks = hybrid_retrieve(clean_query, query_vec, top_k=top_k, include_restricted=include_restricted)
         retrieval_mode = "hybrid"
     else:
         chunks = retrieve(query_vec, top_k=top_k, include_restricted=include_restricted)
