@@ -102,20 +102,17 @@ def classify_difficulty_llm(query: str) -> dict[str, Any]:
     """Score query difficulty 1–5 using GPT-4o-mini as judge.
 
     Returns {"score": int, "reason": str}.
-    Falls back to regex score if the API call fails.
+    Two layers of resilience: llm_complete adds model fallback (Gap 2); if the
+    call still fails (both models down), falls back to the regex score.
     """
-    from openai import OpenAI
-    client = OpenAI(api_key=os.getenv("OPENAI_API_KEY"))
+    from scripts.llm_fallback import llm_complete
 
     try:
-        response = client.chat.completions.create(
+        raw = llm_complete(
+            [{"role": "user", "content": _LLM_PROMPT.format(query=query)}],
             model=MODEL_SIMPLE,       # cheap model for the routing decision itself
             temperature=0,
-            messages=[
-                {"role": "user", "content": _LLM_PROMPT.format(query=query)}
-            ],
         )
-        raw = response.choices[0].message.content.strip()
         raw = raw.removeprefix("```json").removeprefix("```").removesuffix("```").strip()
         result = json.loads(raw)
         return {"score": int(result["score"]), "reason": result.get("reason", "")}

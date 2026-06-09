@@ -24,6 +24,8 @@ from dataclasses import dataclass
 from openai import OpenAI
 from dotenv import load_dotenv
 
+from scripts.llm_fallback import llm_complete  # Gap 2: fallback-aware model calls
+
 load_dotenv()
 _client = OpenAI(api_key=os.getenv("OPENAI_API_KEY"))
 
@@ -76,17 +78,17 @@ def check_hallucination(answer: str, context: str) -> HallucinationResult:
     """
     prompt = f"CONTEXT:\n{context[:4000]}\n\nANSWER:\n{answer}"
     try:
-        resp = _client.chat.completions.create(
-            model="gpt-4o-mini",
-            temperature=0,
-            max_tokens=600,
-            response_format={"type": "json_object"},
-            messages=[
+        # Gap 2: fallback-aware. Still fails CLOSED below if both models error.
+        content = llm_complete(
+            [
                 {"role": "system", "content": HALLUCINATION_PROMPT},
                 {"role": "user",   "content": prompt},
             ],
+            temperature=0,
+            max_tokens=600,
+            response_format={"type": "json_object"},
         )
-        data = json.loads(resp.choices[0].message.content)
+        data = json.loads(content)
         claims = [
             Claim(
                 claim=c["claim"],

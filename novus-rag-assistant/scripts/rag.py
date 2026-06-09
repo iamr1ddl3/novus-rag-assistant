@@ -133,6 +133,71 @@ def get_conn():
 
 
 # ---------------------------------------------------------------------------
+# Gap 4 — embedding version pinning: detect query-time vs index-time mismatch
+# ---------------------------------------------------------------------------
+
+class EmbeddingModelMismatch(RuntimeError):
+    """Raised when the index was built with a different embedding model than the
+    query path uses — a silent vector-space mismatch that destroys relevance."""
+
+
+_embedding_model_checked = False  # module-level: assert runs once per process
+
+
+def assert_embedding_model_match() -> None:
+    """Verify every indexed chunk was embedded with EMBED_MODEL.
+
+    Runs once per process (cached). If the chunks table reports any embedding
+    model other than EMBED_MODEL, raises EmbeddingModelMismatch — querying a
+    mismatched index silently returns garbage with no other error signal.
+
+    Tolerates a not-yet-migrated table (no embedding_model column) by warning
+    and skipping, so older DBs degrade loudly-ish rather than crash hard.
+    """
+    global _embedding_model_checked
+    if _embedding_model_checked:
+        return
+
+    conn = get_conn()
+    try:
+        with conn.cursor() as cur:
+            try:
+                cur.execute("SELECT DISTINCT embedding_model FROM chunks")
+                models = {row[0] for row in cur.fetchall()}
+            except psycopg2.errors.UndefinedColumn:
+                # Table predates the Gap-4 migration — degrade with a loud warning.
+                conn.rollback()
+                print(
+                    "⚠️  chunks.embedding_model column absent — run setup_db.py to "
+                    "migrate, then re-ingest. Skipping embedding-version check."
+                )
+                _embedding_model_checked = True
+                return
+    finally:
+        conn.close()
+
+    # Empty table (pre-ingest) is fine — nothing to mismatch yet.
+    if models and models != {EMBED_MODEL}:
+        raise EmbeddingModelMismatch(
+            f"Index embedded with {sorted(models)} but query path uses "
+            f"'{EMBED_MODEL}'. Re-ingest with the current model or align "
+            f"EMBED_MODEL. (Gap 4: embedding version pinning.)"
+        )
+
+    _embedding_model_checked = True
+
+
+# ---------------------------------------------------------------------------
+# Gap 2 — single chat-completion helper with model fallback
+# ---------------------------------------------------------------------------
+
+# rag.py's generation goes through the shared fallback helper (Gap 2). Callers
+# that need structured output via instructor keep their own client but wrap in a
+# fallback-model retry (instructor can't consume LiteLLM's fallback list).
+from scripts.llm_fallback import llm_complete
+
+
+# ---------------------------------------------------------------------------
 # Embedding
 # ---------------------------------------------------------------------------
 
@@ -354,21 +419,30 @@ def generate_with_confidence(
     if not INSTRUCTOR_ENABLED:
         return generate(query, context, model=model), "unknown", "instructor not installed"
 
-    selected_model = model or CHAT_MODEL
-    try:
-        response: AnswerWithConfidence = _instructor_client.chat.completions.create(
-            model=selected_model,
+    messages = [
+        {"role": "system", "content": CONFIDENCE_SYSTEM_PROMPT},
+        {"role": "user",   "content": f"Context:\n{context}\n\nQuestion: {query}"},
+    ]
+
+    def _structured(m: str) -> "AnswerWithConfidence":
+        return _instructor_client.chat.completions.create(
+            model=m,
             temperature=TEMPERATURE,
             max_tokens=400,
             response_model=AnswerWithConfidence,
-            messages=[
-                {"role": "system", "content": CONFIDENCE_SYSTEM_PROMPT},
-                {"role": "user",   "content": f"Context:\n{context}\n\nQuestion: {query}"},
-            ],
+            messages=messages,
         )
+
+    # Gap 2: instructor can't take LiteLLM's fallback list, so retry once on the
+    # fallback model before degrading to plain (also-fallback-aware) generate().
+    selected_model = model or CHAT_MODEL
+    try:
+        response: AnswerWithConfidence = _structured(selected_model)
     except Exception:
-        # Fail open: if structured call fails, fall back to plain generation
-        return generate(query, context, model=model), "unknown", "instructor call failed"
+        try:
+            response = _structured(FALLBACK_MODEL)
+        except Exception:
+            return generate(query, context, model=model), "unknown", "instructor call failed"
 
     answer = (
         HANDOFF_MESSAGE
@@ -394,28 +468,13 @@ def generate(query: str, context: str, model: str | None = None, _strict: bool =
     Uses LiteLLM if installed (enables model-agnostic fallback).
     Falls back to raw OpenAI SDK if LiteLLM is not available.
     """
-    selected_model = model or CHAT_MODEL
     system_prompt = _STRICT_SYSTEM_PROMPT if _strict else SYSTEM_PROMPT
     messages = [
         {"role": "system", "content": system_prompt},
         {"role": "user", "content": f"Context:\n{context}\n\nQuestion: {query}"},
     ]
-
-    if LITELLM_ENABLED:
-        response = litellm.completion(
-            model=selected_model,
-            fallbacks=[FALLBACK_MODEL],
-            messages=messages,
-            temperature=TEMPERATURE,
-        )
-        return response.choices[0].message.content.strip()
-    else:
-        response = client.chat.completions.create(
-            model=selected_model,
-            temperature=TEMPERATURE,
-            messages=messages,
-        )
-        return response.choices[0].message.content.strip()
+    # Gap 2: single fallback-aware path (was duplicated litellm/raw branches here).
+    return llm_complete(messages, model=model, temperature=TEMPERATURE)
 
 
 # ---------------------------------------------------------------------------
@@ -536,6 +595,9 @@ def ask(
                 "trace_id":               trace_id,
                 "elapsed_seconds":        round(time.time() - t0, 2),
             }
+
+    # --- Gap 4: fail loud if the index was built with a different embed model ---
+    assert_embedding_model_match()
 
     # --- Retrieval (respects corpus access control) ---
     if use_hybrid:

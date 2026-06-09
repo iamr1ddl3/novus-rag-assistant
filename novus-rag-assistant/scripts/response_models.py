@@ -150,6 +150,9 @@ Be specific and actionable — the human agent should be able to act immediately
 """
 
 
+FALLBACK_MODEL = "gpt-3.5-turbo"  # Gap 2: ticket generation degrades here on primary outage
+
+
 def generate_ticket(
     query:   str,
     context: str = "",
@@ -174,14 +177,19 @@ def generate_ticket(
     )
 
     if INSTRUCTOR_ENABLED:
-        ticket = _instructor_client.chat.completions.create(
-            model=model,
-            response_model=SupportTicket,
-            max_retries=3,
-            messages=[{"role": "user", "content": prompt}],
-            temperature=0.1,
-        )
-        return ticket
+        def _make(m: str) -> SupportTicket:
+            return _instructor_client.chat.completions.create(
+                model=m,
+                response_model=SupportTicket,
+                max_retries=3,
+                messages=[{"role": "user", "content": prompt}],
+                temperature=0.1,
+            )
+        # Gap 2: retry once on the fallback model if the primary is down.
+        try:
+            return _make(model)
+        except Exception:
+            return _make(FALLBACK_MODEL)
 
     # Graceful fallback if instructor not installed
     from openai import OpenAI as _OpenAI2
