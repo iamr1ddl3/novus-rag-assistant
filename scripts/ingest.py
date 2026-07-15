@@ -1,89 +1,151 @@
 """
-Ingest documents into pgvector with naive fixed-size chunking.
+ingest.py — Chunk and embed all 19 Novus Bank policy documents, then store
+            in pgvector.
+
+Week 2 adds --strategy so all three chunking strategies can be compared via
+the eval harness without changing code:
+
+    python scripts/ingest.py --strategy fixed_size      # Week 1 baseline
+    python scripts/ingest.py --strategy sliding_window  # A1.1
+    python scripts/ingest.py --strategy sentence_aware  # A1.2
+
 Run: python scripts/ingest.py
+Re-run: safe — clears existing rows for each doc before inserting fresh ones.
 """
+
+import argparse
 import os
-import glob
-import json
-from openai import OpenAI
+import time
+from pathlib import Path
+from typing import Iterator
+
 import psycopg2
-from pgvector.psycopg2 import register_vector
+from openai import OpenAI
 from dotenv import load_dotenv
 
 load_dotenv()
 
-client = OpenAI()
+CHUNK_SIZE = 500   # characters per chunk
+BATCH_SIZE = 20    # embeddings per API call
+CORPUS_DIR = Path(__file__).parent.parent / "corpus"
 
-CHUNK_SIZE = 500
-CHUNK_OVERLAP = 0
-CORPUS_DIR = os.path.join(os.path.dirname(__file__), "..", "corpus")
+# Gap 4 — embedding version pinning. Single source of truth for the embedding
+# model, stamped into every chunk row so a query-time vs index-time mismatch is
+# detectable (see rag.assert_embedding_model_match). Must match rag.EMBED_MODEL.
+EMBED_MODEL = "text-embedding-3-small"
+
+# Corpus access control: documents that must never be served to external customers.
+# Chunks from these docs are stored with restricted=TRUE and filtered at retrieval time.
+RESTRICTED_DOCS = {"19_internal_agent_guidelines"}
+
+client = OpenAI(api_key=os.getenv("OPENAI_API_KEY"))
 
 
-def get_connection():
-    conn = psycopg2.connect(
-        host=os.getenv("PG_HOST", "localhost"),
-        port=os.getenv("PG_PORT", "5433"),
-        user=os.getenv("PG_USER", "workshop"),
-        password=os.getenv("PG_PASSWORD", "workshop123"),
-        dbname=os.getenv("PG_DATABASE", "acmera_kb"),
+# ---------------------------------------------------------------------------
+# Chunking — delegates to chunker.py
+# ---------------------------------------------------------------------------
+
+import sys
+sys.path.insert(0, str(Path(__file__).parent.parent))
+from scripts.chunker import chunk_text  # noqa: E402
+
+
+def iter_documents(corpus_dir: Path) -> Iterator[tuple[str, str]]:
+    """Yield (doc_id, content) for every .md file in corpus_dir, sorted."""
+    for path in sorted(corpus_dir.glob("*.md")):
+        doc_id = path.stem  # e.g. "03_debit_card_policy"
+        content = path.read_text(encoding="utf-8")
+        yield doc_id, content
+
+
+# ---------------------------------------------------------------------------
+# Embedding
+# ---------------------------------------------------------------------------
+
+def embed_batch(texts: list[str]) -> list[list[float]]:
+    """Embed a batch of texts. Returns list of 1536-dim float vectors."""
+    response = client.embeddings.create(
+        model=EMBED_MODEL,
+        input=texts,
     )
-    register_vector(conn)
-    return conn
-
-
-def naive_chunk(text, chunk_size=CHUNK_SIZE):
-    chunks = []
-    for i in range(0, len(text), chunk_size):
-        chunk = text[i:i + chunk_size].strip()
-        if chunk:
-            chunks.append(chunk)
-    return chunks
-
-
-def embed_texts(texts):
-    response = client.embeddings.create(model="text-embedding-3-small", input=texts)
     return [item.embedding for item in response.data]
 
 
-def ingest():
-    conn = get_connection()
-    cur = conn.cursor()
-    cur.execute("DELETE FROM chunks;")
+# ---------------------------------------------------------------------------
+# Database helpers
+# ---------------------------------------------------------------------------
 
-    doc_files = sorted(glob.glob(os.path.join(CORPUS_DIR, "*.md")))
+def get_conn():
+    return psycopg2.connect(
+        host=os.getenv("PG_HOST", "localhost"),
+        port=int(os.getenv("PG_PORT", 5433)),
+        user=os.getenv("PG_USER", "novus"),
+        password=os.getenv("PG_PASSWORD", "novus123"),
+        dbname=os.getenv("PG_DATABASE", "novus_kb"),
+    )
+
+
+def clear_doc(cur, doc_id: str):
+    cur.execute("DELETE FROM chunks WHERE doc_id = %s", (doc_id,))
+
+
+def insert_chunks(cur, doc_id: str, chunks: list[str], embeddings: list[list[float]]):
+    restricted = doc_id in RESTRICTED_DOCS
+    for idx, (text, vec) in enumerate(zip(chunks, embeddings)):
+        cur.execute(
+            "INSERT INTO chunks (doc_id, chunk_index, content, embedding, restricted, embedding_model) "
+            "VALUES (%s, %s, %s, %s, %s, %s)",
+            (doc_id, idx, text, vec, restricted, EMBED_MODEL),
+        )
+
+
+# ---------------------------------------------------------------------------
+# Main ingestion loop
+# ---------------------------------------------------------------------------
+
+def ingest(strategy: str = "fixed_size"):
+    conn = get_conn()
+    conn.autocommit = False
+
+    total_docs = 0
     total_chunks = 0
 
-    for filepath in doc_files:
-        doc_name = os.path.basename(filepath)
-        with open(filepath, "r") as f:
-            content = f.read()
+    for doc_id, content in iter_documents(CORPUS_DIR):
+        chunks = chunk_text(content, strategy=strategy)
+        if not chunks:
+            continue
 
-        chunks = naive_chunk(content)
-        print(f"  {doc_name}: {len(chunks)} chunks")
+        # Embed in batches to respect API limits
+        all_embeddings: list[list[float]] = []
+        for i in range(0, len(chunks), BATCH_SIZE):
+            batch = chunks[i : i + BATCH_SIZE]
+            embeddings = embed_batch(batch)
+            all_embeddings.extend(embeddings)
+            # Brief pause to avoid rate-limit spikes on first run
+            if i + BATCH_SIZE < len(chunks):
+                time.sleep(0.1)
 
-        for batch_start in range(0, len(chunks), 20):
-            batch = chunks[batch_start:batch_start + 20]
-            embeddings = embed_texts(batch)
+        with conn.cursor() as cur:
+            clear_doc(cur, doc_id)  # idempotent re-run support
+            insert_chunks(cur, doc_id, chunks, all_embeddings)
 
-            for i, (chunk, embedding) in enumerate(zip(batch, embeddings)):
-                chunk_index = batch_start + i
-                metadata = json.dumps({
-                    "doc_name": doc_name,
-                    "chunk_index": chunk_index,
-                })
-                cur.execute(
-                    """INSERT INTO chunks (doc_name, chunk_index, content, embedding, metadata)
-                       VALUES (%s, %s, %s, %s::vector, %s)""",
-                    (doc_name, chunk_index, chunk, embedding, metadata),
-                )
-
+        conn.commit()
+        total_docs += 1
         total_chunks += len(chunks)
+        print(f"  ✓ {doc_id}: {len(chunks)} chunks")
 
-    conn.commit()
-    cur.close()
     conn.close()
-    print(f"\nDone: {len(doc_files)} documents, {total_chunks} chunks.")
+    print(f"\n✅  Ingestion complete: {total_docs} docs, {total_chunks} chunks stored")
 
 
 if __name__ == "__main__":
-    ingest()
+    parser = argparse.ArgumentParser(description="Ingest Novus Bank corpus into pgvector")
+    parser.add_argument(
+        "--strategy",
+        choices=["fixed_size", "sliding_window", "sentence_aware"],
+        default="fixed_size",
+        help="Chunking strategy (default: fixed_size)",
+    )
+    args = parser.parse_args()
+    print(f"\nIngesting with strategy: {args.strategy}\n")
+    ingest(strategy=args.strategy)

@@ -1,52 +1,61 @@
 """
-Step 1: Set up the pgvector database.
-Run: python scripts/setup_db.py
+setup_db.py — Create the pgvector schema for Novus Bank knowledge base.
+
+Run once after `docker-compose up -d`. Safe to re-run (idempotent).
 """
+
 import os
 import psycopg2
 from dotenv import load_dotenv
 
 load_dotenv()
 
+DDL = """
+CREATE EXTENSION IF NOT EXISTS vector;
 
-def get_connection():
-    return psycopg2.connect(
-        host=os.getenv("PG_HOST", "localhost"),
-        port=os.getenv("PG_PORT", "5433"),
-        user=os.getenv("PG_USER", "workshop"),
-        password=os.getenv("PG_PASSWORD", "workshop123"),
-        dbname=os.getenv("PG_DATABASE", "acmera_kb"),
-    )
+CREATE TABLE IF NOT EXISTS chunks (
+    id              SERIAL PRIMARY KEY,
+    doc_id          TEXT    NOT NULL,          -- e.g. "03_debit_card_policy"
+    chunk_index     INTEGER NOT NULL,          -- 0-based position within the doc
+    content         TEXT    NOT NULL,
+    embedding       vector(1536),              -- text-embedding-3-small dimensionality
+    restricted      BOOLEAN NOT NULL DEFAULT FALSE,  -- corpus access control: TRUE = internal-only
+    embedding_model TEXT    NOT NULL DEFAULT 'text-embedding-3-small'  -- which model produced `embedding` (Gap 4: version pinning)
+);
+
+-- HNSW index: fast approximate nearest-neighbour search.
+-- m=16 and ef_construction=64 are solid starting-point values for <50k chunks.
+-- cosine distance matches how we query (1 - cosine similarity).
+CREATE INDEX IF NOT EXISTS chunks_embedding_hnsw
+    ON chunks
+    USING hnsw (embedding vector_cosine_ops)
+    WITH (m = 16, ef_construction = 64);
+"""
+
+# Idempotent migration: adds columns to tables created before this change.
+MIGRATION_DDL = """
+ALTER TABLE chunks
+    ADD COLUMN IF NOT EXISTS restricted BOOLEAN NOT NULL DEFAULT FALSE;
+
+ALTER TABLE chunks
+    ADD COLUMN IF NOT EXISTS embedding_model TEXT NOT NULL DEFAULT 'text-embedding-3-small';
+"""
 
 
 def setup():
-    conn = get_connection()
+    conn = psycopg2.connect(
+        host=os.getenv("PG_HOST", "localhost"),
+        port=int(os.getenv("PG_PORT", 5433)),
+        user=os.getenv("PG_USER", "novus"),
+        password=os.getenv("PG_PASSWORD", "novus123"),
+        dbname=os.getenv("PG_DATABASE", "novus_kb"),
+    )
     conn.autocommit = True
-    cur = conn.cursor()
-
-    cur.execute("CREATE EXTENSION IF NOT EXISTS vector;")
-    cur.execute("DROP TABLE IF EXISTS chunks;")
-
-    cur.execute("""
-        CREATE TABLE chunks (
-            id SERIAL PRIMARY KEY,
-            doc_name TEXT NOT NULL,
-            chunk_index INTEGER NOT NULL,
-            content TEXT NOT NULL,
-            embedding vector(1536),
-            metadata JSONB DEFAULT '{}'
-        );
-    """)
-
-    cur.execute("""
-        CREATE INDEX ON chunks
-        USING hnsw (embedding vector_cosine_ops)
-        WITH (m = 16, ef_construction = 64);
-    """)
-
-    cur.close()
+    with conn.cursor() as cur:
+        cur.execute(DDL)
+        cur.execute(MIGRATION_DDL)
     conn.close()
-    print("Database setup complete.")
+    print("✅  Schema ready: extension=vector, table=chunks, index=hnsw, columns=restricted+embedding_model")
 
 
 if __name__ == "__main__":

@@ -1,48 +1,21 @@
-﻿# Python
+# Secrets — never commit
+.env
+langfuse/.env
+
+# Python
 __pycache__/
 *.pyc
-*.pyo
-*.pyd
-.Python
+venv/
+.venv/
 *.egg-info/
 dist/
 build/
 
-# Environment
-.env
-langfuse/.env
-*.env
-
-# Eval outputs (re-generated each run)
-novus-rag-assistant/scripts/eval_results.json
-
-# Node (for report generation)
-node_modules/
+# Eval output (large, regenerated on each run)
+scripts/eval_results.json
 
 # OS
 .DS_Store
-Thumbs.db
+~$*
 
-# Claude internals and IDE
-.claude/
-.obsidian/
-
-# Source inputs (immutable raw data)
-raw/
-
-# Temp / test files
-novus-rag-assistant/query.json
-*.docx
-
-# uvicorn / nohup runtime artefacts
-api_*.log
-api_pid*.txt
-api_server.log
-api_server_err.log
-
-# playwright MCP cache
-.playwright-mcp/
-
-# Vault-internal agent instructions — never publish
 CLAUDE.md
-**/CLAUDE.md
