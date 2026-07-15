@@ -42,3 +42,7 @@ api_server_err.log
 
 # playwright MCP cache
 .playwright-mcp/
+
+# Vault-internal agent instructions — never publish
+CLAUDE.md
+**/CLAUDE.md
