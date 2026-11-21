@@ -514,7 +514,12 @@ def main():
     parser.add_argument("--use-reranker", action="store_true", help="Apply Cohere rerank-english-v3.0 after retrieval")
     parser.add_argument("--remote", action="store_true", help="Call deployed API instead of local import (D4.1)")
     parser.add_argument("--api-url", type=str, default=None, help="Base URL of deployed API, e.g. https://<alb-dns>")
+    parser.add_argument("--no-langfuse", action="store_true", help="Do not attach eval scores to LangFuse traces")
     args = parser.parse_args()
+
+    if args.no_langfuse:
+        global LANGFUSE_ENABLED
+        LANGFUSE_ENABLED = False
 
     dataset = json.loads(DATASET_PATH.read_text(encoding="utf-8"))
     if args.limit:
