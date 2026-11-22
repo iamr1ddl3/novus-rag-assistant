@@ -240,12 +240,12 @@ def attach_langfuse_scores(trace_id: str, faithfulness: float, correctness: floa
     if not LANGFUSE_ENABLED or not _lf or not trace_id:
         return
     try:
-        _lf.score(
+        _lf.create_score(
             trace_id=trace_id,
             name="faithfulness",
             value=faithfulness,
         )
-        _lf.score(
+        _lf.create_score(
             trace_id=trace_id,
             name="correctness",
             value=correctness,
