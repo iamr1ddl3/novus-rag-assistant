@@ -20,7 +20,7 @@
 
 <br/>
 
-[**Quick Start**](#-quick-start) · [**How It Works**](#-how-it-works) · [**Evaluation**](#-evaluation) · [**Known Weaknesses**](#-known-weaknesses) · [**Observability**](#-observability)
+[**Quick Start**](#-quick-start) · [**Interactive Explainer**](#interactive-explainer) · [**How It Works**](#-how-it-works) · [**Evaluation**](#-evaluation) · [**Known Weaknesses**](#-known-weaknesses) · [**Observability**](#-observability)
 
 </div>
 
@@ -52,6 +52,33 @@ This project builds a **RAG pipeline** so a support agent (or an automated syste
 | 🔁 | **Regression checker** | CI-style gate: fails if any metric drops >5pp from the saved baseline |
 | 🔬 | **LangFuse tracing** | Per-query span tree with latency + token counts at every step |
 | 🌐 | **FastAPI + web UI** | REST API (`/query`, `/ingest`, `/health`) with a browser front-end |
+
+---
+
+<a id="interactive-explainer"></a>
+
+## 🎛️ Interactive Explainer
+
+**Right, or Not Given** is an 11-step interactive lesson that follows one banking policy question through the RAG pipeline, on an animated isometric diagram with a live Langfuse span counter. Open [`docs/interactive/index.html`](docs/interactive/index.html) in a browser (it works offline), or [view it online](https://htmlpreview.github.io/?https://github.com/iamr1ddl3/novus-rag-assistant/blob/main/docs/interactive/index.html). Use the arrow keys or the Back / Next buttons to step through.
+
+- **Safety first:** the opt-in input guardrail and PII redaction that run before any retrieval.
+- **Search by meaning:** embedding the question and pulling the 5 closest chunks from pgvector.
+- **Grounded answers:** answering only from numbered passages, with a self-rated confidence.
+- **Handoff:** why low confidence creates a support ticket instead of a guess.
+- **Hybrid search:** how BM25 plus Reciprocal Rank Fusion rescues the `Form 60` query, and how prompt injection is blocked.
+- **Measured:** the eval scorecard, weak spots included.
+
+<p align="center">
+  <img src="docs/img/explainer-grounded-answer.png" alt="Lesson step 6: answer only from the passages" width="100%"/>
+</p>
+
+<details>
+<summary><b>▶ More screenshots</b></summary>
+
+<img src="docs/img/explainer-handoff.png" alt="Lesson step 7: low confidence hands off to a human" width="100%"/>
+<img src="docs/img/explainer-hybrid-search.png" alt="Lesson step 8: when keywords beat embeddings" width="100%"/>
+
+</details>
 
 ---
 
