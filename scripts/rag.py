@@ -68,7 +68,25 @@ client = OpenAI(api_key=os.getenv("OPENAI_API_KEY"))
 # ---------------------------------------------------------------------------
 
 try:
-    from langfuse.decorators import observe, langfuse_context
+    # LangFuse SDK v5 (OpenTelemetry export). The legacy v2 ingestion API was
+    # shut down on LangFuse Cloud on 2026-11-16, so SDK 2.x traces are dropped.
+    from langfuse import observe, get_client as _lf_get_client
+
+    class langfuse_context:  # thin compat layer over the v5 client
+        @staticmethod
+        def get_current_trace_id():
+            try:
+                return _lf_get_client().get_current_trace_id()
+            except Exception:
+                return None
+
+        @staticmethod
+        def flush():
+            try:
+                _lf_get_client().flush()
+            except Exception:
+                pass
+
     LANGFUSE_ENABLED = True
 except Exception:
     # ImportError OR pydantic/SDK incompat (e.g. Python 3.14 + langfuse pydantic v1) — degrade to no-op
@@ -82,6 +100,10 @@ except Exception:
     class langfuse_context:
         @staticmethod
         def get_current_trace_id():
+            return None
+
+        @staticmethod
+        def flush():
             return None
 
 # ---------------------------------------------------------------------------

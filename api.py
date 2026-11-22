@@ -27,9 +27,7 @@ from pydantic import BaseModel, Field
 
 sys.path.insert(0, str(Path(__file__).parent))
 
-from scripts.rag import ask, _cache as _rag_cache, LANGFUSE_ENABLED
-if LANGFUSE_ENABLED:
-    from langfuse.decorators import langfuse_context
+from scripts.rag import ask, _cache as _rag_cache, LANGFUSE_ENABLED, langfuse_context
 
 app = FastAPI(title="Novus Bank RAG API", version="1.0.0")
 

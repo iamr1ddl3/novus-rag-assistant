@@ -25,6 +25,15 @@ Parameters:
       LANGFUSE_PUBLIC_KEY and LANGFUSE_SECRET_KEY. Keeps every API key out of
       this template and out of stack parameters.
 
+  LangfuseHost:
+    Type: String
+    Default: https://us.cloud.langfuse.com
+    AllowedPattern: "https://.+"
+    Description: >
+      LangFuse host the app sends traces to. Must match the region of the
+      LangFuse project whose keys are in AppKeysSecretArn
+      (US https://us.cloud.langfuse.com, EU https://cloud.langfuse.com).
+
   UseSpot:
     Type: String
     Default: "true"
@@ -330,7 +339,7 @@ Resources:
             - Name: PG_DATABASE
               Value: novus_kb
             - Name: LANGFUSE_HOST
-              Value: https://cloud.langfuse.com
+              Value: !Ref LangfuseHost
 
   # CloudWatch log group
   LogGroup:
