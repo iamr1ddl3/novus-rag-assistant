@@ -96,7 +96,7 @@ jobs:
           OPENAI_API_KEY: ${{ secrets.OPENAI_API_KEY }}
           LANGFUSE_PUBLIC_KEY: ${{ secrets.LANGFUSE_PUBLIC_KEY }}
           LANGFUSE_SECRET_KEY: ${{ secrets.LANGFUSE_SECRET_KEY }}
-          LANGFUSE_HOST: https://cloud.langfuse.com
+          LANGFUSE_HOST: https://us.cloud.langfuse.com
         # --no-langfuse skips score attachment in CI to reduce API calls
         # Remove this flag if you want CI scores visible in LangFuse
         run: python scripts/eval_harness.py --no-langfuse
