@@ -26,6 +26,8 @@
 
 ---
 
+https://github.com/user-attachments/assets/89026ed3-9141-4519-b74a-f3779801b626
+
 ## 🧭 The Use Case
 
 **Novus Bank** is a fictional Indian neo-bank with **19 policy documents** covering everything from account opening to fraud liability. Support agents field hundreds of questions daily — interest rates, fee structures, liability rules — across policies that are dense, interlinked, and full of edge cases.
