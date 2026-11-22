@@ -20,7 +20,7 @@
 
 <br/>
 
-[**Quick Start**](#-quick-start) · [**How It Works**](#-how-it-works) · [**Evaluation**](#-evaluation) · [**Known Weaknesses**](#-known-weaknesses) · [**Observability**](#-observability)
+[**Quick Start**](#-quick-start) · [**Interactive Explainer**](#interactive-explainer) · [**How It Works**](#-how-it-works) · [**Evaluation**](#-evaluation) · [**Known Weaknesses**](#-known-weaknesses) · [**Observability**](#-observability)
 
 </div>
 
@@ -50,6 +50,31 @@ This project builds a **RAG pipeline** so a support agent (or an automated syste
 | 🔁 | **Regression checker** | CI-style gate: fails if any metric drops >5pp from the saved baseline |
 | 🔬 | **LangFuse tracing** | Per-query span tree with latency + token counts at every step |
 | 🌐 | **FastAPI + web UI** | REST API (`/query`, `/ingest`, `/health`) with a browser front-end |
+
+---
+
+<a id="interactive-explainer"></a>
+
+## 🎛️ Interactive Explainer
+
+A self-contained, offline HTML page that walks through how the assistant works. Open [`docs/interactive-explainer.html`](docs/interactive-explainer.html) in a browser, or [view it online](https://htmlpreview.github.io/?https://github.com/iamr1ddl3/novus-rag-assistant/blob/main/docs/interactive-explainer.html).
+
+- **Pipeline:** switch between Dense, Hybrid, Cache and Router modes, toggle guardrails and the reranker, and see which of the 11 stages run.
+- **Walkthrough:** replays real questions step by step, including a blocked prompt injection and a low-confidence handoff.
+- **Dense vs Hybrid:** an interactive Reciprocal Rank Fusion table for the `Form 60` query.
+- **Also covers:** safety layers, eval scorecard, the Langfuse trace tree, AWS architecture and cost.
+
+<p align="center">
+  <img src="docs/img/explainer-pipeline.png" alt="Pipeline view: stages light up per retrieval mode" width="100%"/>
+</p>
+
+<details>
+<summary><b>▶ More screenshots</b></summary>
+
+<img src="docs/img/explainer-dense-vs-hybrid.png" alt="Dense vs Hybrid with rank fusion on the Form 60 query" width="100%"/>
+<img src="docs/img/explainer-walkthrough.png" alt="Step-by-step replay of a question through the pipeline" width="100%"/>
+
+</details>
 
 ---
 
